@@ -10,20 +10,67 @@ app.use(cors());
 const users = [];
 
 function checksExistsUserAccount(request, response, next) {
-  // Complete aqui
-}
+  const {username} = request.headers;
+  const user = users.find(user => user.username === username);
+
+  if (!user)  {
+      return response.status(404).json({error: "Usuário não encontrado."})
+  };
+
+  request.user = user;
+
+  return next();
+};
 
 function checksCreateTodosUserAvailability(request, response, next) {
-  // Complete aqui
-}
+  const user = request.user;
+
+  if ((user.pro == false && user.todos.length < 10) || user.pro){
+      return next();
+  }; 
+
+  return response.status(403).json({error: "Não pode criar."})
+};
 
 function checksTodoExists(request, response, next) {
-  // Complete aqui
-}
+  const {username} = request.headers;
+  const {id} = request.params; 
+
+  const user = users.find(user => user.username == username);  
+
+  if (user) {
+
+      if(validate(id))
+      {
+      userTodo = user.todos.find(userTodo => userTodo.id == id);
+
+      if(userTodo){
+          request.todo = userTodo;
+          request.user = user;
+          return next()
+      };
+
+      return response.status(404).json({error: "Todo inexistente."})
+      };
+      
+      return response.status(400).json({error: "Id não é uuid."})
+  };
+
+  return response.status(404).json({error: "Usuario inexistente."})
+};
 
 function findUserById(request, response, next) {
-  // Complete aqui
-}
+  const {id} = request.params;
+
+  const user = users.find(user => user.id == id);
+
+  if (user) {
+      request.user = user;
+      return next()
+  };
+
+  return response.status(404).json({error: "Usuário não encontrado."})
+};
 
 app.post('/users', (request, response) => {
   const { name, username } = request.body;
@@ -32,7 +79,7 @@ app.post('/users', (request, response) => {
 
   if (usernameAlreadyExists) {
     return response.status(400).json({ error: 'Username already exists' });
-  }
+  };
 
   const user = {
     id: uuidv4(),
@@ -48,7 +95,7 @@ app.post('/users', (request, response) => {
 });
 
 app.get('/users/:id', findUserById, (request, response) => {
-  const { user } = request;
+  const user = request.user;
 
   return response.json(user);
 });
@@ -58,7 +105,7 @@ app.patch('/users/:id/pro', findUserById, (request, response) => {
 
   if (user.pro) {
     return response.status(400).json({ error: 'Pro plan is already activated.' });
-  }
+  };
 
   user.pro = true;
 
@@ -73,7 +120,7 @@ app.get('/todos', checksExistsUserAccount, (request, response) => {
 
 app.post('/todos', checksExistsUserAccount, checksCreateTodosUserAvailability, (request, response) => {
   const { title, deadline } = request.body;
-  const { user } = request;
+  const  user  = request.user;
 
   const newTodo = {
     id: uuidv4(),
@@ -90,7 +137,7 @@ app.post('/todos', checksExistsUserAccount, checksCreateTodosUserAvailability, (
 
 app.put('/todos/:id', checksTodoExists, (request, response) => {
   const { title, deadline } = request.body;
-  const { todo } = request;
+  const {todo} = request;
 
   todo.title = title;
   todo.deadline = new Date(deadline);
@@ -113,7 +160,7 @@ app.delete('/todos/:id', checksExistsUserAccount, checksTodoExists, (request, re
 
   if (todoIndex === -1) {
     return response.status(404).json({ error: 'Todo not found' });
-  }
+  };
 
   user.todos.splice(todoIndex, 1);
 
